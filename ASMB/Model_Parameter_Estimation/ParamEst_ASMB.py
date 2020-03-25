@@ -10,7 +10,7 @@
 
 from pyomo.environ import *
 from pyomo.dae import ContinuousSet, DerivativeVar
-from ParamEst_Initdata import *
+from ParamEst_Initdata_ASMB import *
 
 Nfex=Nfex+1
 
@@ -119,8 +119,6 @@ m.CbarE = Param(m.Data, m.Comp, initialize = CExtract) # average conc in Extract
 m.CbarR = Param(m.Data, m.Comp, initialize = CRaffinate) # average conc in Raffinate (experiment)
 
 m.rho = Param(m.Ridge, initialize = Rho) # regularization parameters
-
-m.A = Param(m.CP, m.CP, initialize = A) # parameters of collocation points
 
 data = DataPortal(model=m)
 

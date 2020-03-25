@@ -10,10 +10,12 @@
 from pyomo.environ import *
 from pyomo.dae import *
 from pyomo.opt import SolverFactory
-from ParamEst import m, data
-from ParamEst_Initdata import *
+from ParamEst_ASMB import m, data
+from ParamEst_Initdata_ASMB import *
+from GaussRadauQuadrature import lglnodes
 import datetime
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 import sys
 import os
 import numpy as np
@@ -48,7 +50,7 @@ m.Ucon = ConstraintList() # list of constraints on fluid velocity (used in param
 m.intCR = Var(m.Data, m.Comp, m.Col) # integrated concentration of Raffinate
 m.intCE = Var(m.Data, m.Comp, m.Col) # integrated concentration of Extract
 
-m.UofCI = Var(m.Data) # fluid velocity of Internal-Circulation-process in ASMB (used in parameter estimation step)
+m.UofIC = Var(m.Data) # fluid velocity of Internal-Circulation-process in ASMB (used in parameter estimation step)
 m.UofRaff = Var(m.Data) # fluid velocity of Raffinate-collected-process in ASMB
 m.UofFeedRaff = Var(m.Data) # fluid velocity of Feed-injected-and-Raffinate-collected-process in ASMB
 m.UofExt = Var(m.Data) # fluid velocity of Extract-collected-process in ASMB
@@ -195,10 +197,6 @@ def UR_Fix_rule(m):
                     m.UR[d,i,j].fix(0)
 instance.UR_Fix = BuildAction(rule = UR_Fix_rule)
 
-# ------------------------------------------------------
-# Fixing step time
-# ------------------------------------------------------
-
 def StepTimeFix_rule(m):
     for d in sorted(m.Data):
         m.StepTime[d].fix(StepTimeInit[d-1])
@@ -211,7 +209,7 @@ instance.StepTimeFix = BuildAction(rule = StepTimeFix_rule)
 def HT_Fix_rule(m):
     for d in sorted(m.Data):
         for i in m.t:
-            if i < value(m.t[1+sum(HTI[0:1])]):
+            if i < value(m.t[1+sum(HTI[0:1])+1]):
                 m.HT[d,i].fix(1.0*HT1[d-1]/(HTR[0]*StepTimeInit[d-1]))
             if value(m.t[1+sum(HTI[0:1])]) < i and i < value(m.t[1+sum(HTI[0:2])+1]):
                 m.HT[d,i].fix(1.0*HT2[d-1]/(HTR[1]*StepTimeInit[d-1]))
@@ -226,15 +224,25 @@ def HT_Fix_rule(m):
 instance.HT_Fix = BuildAction(rule = HT_Fix_rule)
 
 # -------------------------------------------------------------------
+# Calculating weights of Gauss-Radau quadrature
+# -------------------------------------------------------------------
+
+w=lglnodes(value(instance.NCP))
+
+def Ac_init(m,cp):
+    return w[cp-1]/2.0
+instance.Ac = Param(instance.CP,initialize=Ac_init,default=0)
+
+# -------------------------------------------------------------------
 # Defining calculation of Integrals with Gauss-Radau quadrature
 # -------------------------------------------------------------------
 
 def _intCR(m, d,i,j):
-    return sum(m.UR[d,j,m.t[(k-1)*m.NCP+1+l]]*m.HT[d,m.t[(k-1)*m.NCP+1+l]]*(m.A[l,3]*m.C[d,i,j,m.t[1+(k-1)*m.NCP+l],value(m.L)]) for l in range(1,m.NCP+1) for k in range(1,Nfet+1)) == m.intCR[d,i,j]
+    return sum(m.UR[d,j,m.t[(k-1)*m.NCP+1+l]]*m.HT[d,m.t[(k-1)*m.NCP+1+l]]*(m.Ac[l]*m.C[d,i,j,m.t[1+(k-1)*m.NCP+l],value(m.L)]) for l in range(1,m.NCP+1) for k in range(1,Nfet+1)) == m.intCR[d,i,j]
 instance.intCRrule = Constraint(instance.Data, instance.Comp, instance.Col,rule=_intCR)
 
 def _intCE(m, d,i,j):
-    return sum(m.UE[d,j,m.t[(k-1)*m.NCP+1+l]]*m.HT[d,m.t[(k-1)*m.NCP+1+l]]*(m.A[l,3]*m.C[d,i,j,m.t[1+(k-1)*m.NCP+l],value(m.L)]) for l in range(1,m.NCP+1) for k in range(1,Nfet+1)) == m.intCE[d,i,j]
+    return sum(m.UE[d,j,m.t[(k-1)*m.NCP+1+l]]*m.HT[d,m.t[(k-1)*m.NCP+1+l]]*(m.Ac[l]*m.C[d,i,j,m.t[1+(k-1)*m.NCP+l],value(m.L)]) for l in range(1,m.NCP+1) for k in range(1,Nfet+1)) == m.intCE[d,i,j]
 instance.intCErule = Constraint(instance.Data, instance.Comp, instance.Col,rule=_intCE)
 
 # -------------------------------------------------------------------
@@ -261,9 +269,9 @@ instance.obj1 = Objective(rule = obj1_expr, sense = maximize)
 # Objective function 2 to estimate model parameters together with fluid velocities
 def obj2_expr(m):
     if Isotype == "Henry":
-        return (1/len(m.Data))*sum((m.CbarE[d,i] - m.averageCE[d,i])**2 + (m.CbarR[d,i] - m.averageCR[d,i])**2 for d in m.Data for i in m.Comp) + ((10**m.rho[2])/len(m.Data))*sum(((m.UofCI[d] - U1Init[d-1][0])/U1Init[d-1][0])**2 + ((m.UofRaff[d] - U1Init[d-1][1])/U1Init[d-1][1])**2 + ((m.UofFeedRaff[d] - U3Init[d-1][3])/U3Init[d-1][3])**2 + ((m.UofExt[d] - U1Init[d-1][6])/U1Init[d-1][6])**2 for d in m.Data) + (10**m.rho[1])*(sum(((L2K[i-1] - m.K[i])/L2K[i-1])**2 + ((L2Kap[i-1] - m.Kap[i])/L2Kap[i-1])**2 for i in m.Comp) + ((m.LRe - 0.05*Colum*ColL)/(0.05*Colum*ColL))**2)
+        return (1/len(m.Data))*sum((m.CbarE[d,i] - m.averageCE[d,i])**2 + (m.CbarR[d,i] - m.averageCR[d,i])**2 for d in m.Data for i in m.Comp) + ((10**m.rho[2])/len(m.Data))*sum(((m.UofIC[d] - U1Init[d-1][0])/U1Init[d-1][0])**2 + ((m.UofRaff[d] - U1Init[d-1][1])/U1Init[d-1][1])**2 + ((m.UofFeedRaff[d] - U3Init[d-1][3])/U3Init[d-1][3])**2 + ((m.UofExt[d] - U1Init[d-1][6])/U1Init[d-1][6])**2 for d in m.Data) + (10**m.rho[1])*(sum(((L2K[i-1] - m.K[i])/L2K[i-1])**2 + ((L2Kap[i-1] - m.Kap[i])/L2Kap[i-1])**2 for i in m.Comp) + ((m.LRe - 0.05*Colum*ColL)/(0.05*Colum*ColL))**2)
     elif Isotype == "Langmuir" or Isotype == "anti-Langmuir":
-        return (1/len(m.Data))*sum((m.CbarE[d,i] - m.averageCE[d,i])**2 + (m.CbarR[d,i] - m.averageCR[d,i])**2 for d in m.Data for i in m.Comp) + ((10**m.rho[2])/len(m.Data))*sum(((m.UofCI[d] - U1Init[d-1][0])/U1Init[d-1][0])**2 + ((m.UofRaff[d] - U1Init[d-1][1])/U1Init[d-1][1])**2 + ((m.UofFeedRaff[d] - U3Init[d-1][3])/U3Init[d-1][3])**2 + ((m.UofExt[d] - U1Init[d-1][6])/U1Init[d-1][6])**2 for d in m.Data) + (10**m.rho[1])*(sum(((L2b[i-1] - m.b[i])/L2b[i-1])**2 + ((L2K[i-1] - m.K[i])/L2K[i-1])**2 + ((L2Kap[i-1] - m.Kap[i])/L2Kap[i-1])**2 for i in m.Comp) + ((m.LRe - 0.05*Colum*ColL)/(0.05*Colum*ColL))**2)
+        return (1/len(m.Data))*sum((m.CbarE[d,i] - m.averageCE[d,i])**2 + (m.CbarR[d,i] - m.averageCR[d,i])**2 for d in m.Data for i in m.Comp) + ((10**m.rho[2])/len(m.Data))*sum(((m.UofIC[d] - U1Init[d-1][0])/U1Init[d-1][0])**2 + ((m.UofRaff[d] - U1Init[d-1][1])/U1Init[d-1][1])**2 + ((m.UofFeedRaff[d] - U3Init[d-1][3])/U3Init[d-1][3])**2 + ((m.UofExt[d] - U1Init[d-1][6])/U1Init[d-1][6])**2 for d in m.Data) + (10**m.rho[1])*(sum(((L2b[i-1] - m.b[i])/L2b[i-1])**2 + ((L2K[i-1] - m.K[i])/L2K[i-1])**2 + ((L2Kap[i-1] - m.Kap[i])/L2Kap[i-1])**2 for i in m.Comp) + ((m.LRe - 0.05*Colum*ColL)/(0.05*Colum*ColL))**2)
     else:
         print("ERROR: Confirm Isotype definition")
 instance.obj2 = Objective(rule = obj2_expr)
@@ -277,7 +285,7 @@ instance.obj2 = Objective(rule = obj2_expr)
 instance.Ucon.deactivate()
 
 for d in instance.Data:
-    instance.UofCI[d].fix(0)
+    instance.UofIC[d].fix(0)
     instance.UofRaff[d].fix(0)
     instance.UofFeedRaff[d].fix(0)
     instance.UofExt[d].fix(0)
@@ -298,22 +306,16 @@ instance.obj2.deactivate()
 # Solver options
 # -------------------------------------------------------------------
 opt = SolverFactory('ipopt')
-opt.options['mu_init'] = 1e-3
+
+opt.options['mu_init'] = 1e-4
 
 opt.options['ma57_pivtol'] = 1e-8
 
 opt.options['max_iter'] = 5000
 
-opt.options['linear_system_scaling'] = 'mc19'
-
 #opt.options['linear_solver'] = 'ma97'
-#opt.options['linear_solver'] = 'ma57'
+# opt.options['linear_solver'] = 'ma57'
 opt.options['linear_solver'] = 'ma27'
-
-
-instance.preprocess()
-results = opt.solve(instance, tee=True)
-instance.load(results)
 
 # -------------------------------------------------------------------
 # Solve successively
@@ -411,49 +413,53 @@ instance.obj2.activate()
 # -------------------------------------------------------------------
 
 for d in instance.Data:
-    instance.UofCI[d].free()
+    instance.UofIC[d].free()
     instance.UofRaff[d].free()
     instance.UofFeedRaff[d].free()
     instance.UofExt[d].free()
 
-# IC0,IC1,IC2
 for d in instance.Data:
     for i in range(0*Zone+1,4*Zone+1):
-        instance.Ucon.add(instance.UofCI[d] == instance.U[d,i,instance.t[1]])
+        # IC0
+        instance.Ucon.add(instance.UofIC[d] == instance.U[d,i,instance.t[1]])
         for j in range(1,sum(HTR[0:1])):
-            instance.Ucon.add(instance.UofCI[d] == instance.U[d,i,instance.t[1+j*instance.NCP+1]])
+            instance.Ucon.add(instance.UofIC[d] == instance.U[d,i,instance.t[1+j*instance.NCP+1]])
+        # IC1
         for j in range(sum(HTR[0:3]),sum(HTR[0:4])):
-            instance.Ucon.add(instance.UofCI[d] == instance.U[d,i,instance.t[1+j*instance.NCP+1]])
+            instance.Ucon.add(instance.UofIC[d] == instance.U[d,i,instance.t[1+j*instance.NCP+1]])
+        # IC2
         for j in range(sum(HTR[0:5]),sum(HTR[0:6])):
-            instance.Ucon.add(instance.UofCI[d] == instance.U[d,i,instance.t[1+j*instance.NCP+1]])
+            instance.Ucon.add(instance.UofIC[d] == instance.U[d,i,instance.t[1+j*instance.NCP+1]])
 
 # Raff
 # Desorbent is only supplied from inlet of first colmun in Zone 1
 # Raffinate is only collected from outlet of last colmun in Zone 3
 for d in instance.Data:
-    for i in range(1*Zone+1,3*Zone+1):
-        for j in range(sum(HTR[0:1]),sum(HTR[0:2])):
-            instance.Ucon.add(instance.UofRaff[d] == instance.U[d,i,instance.t[1+j*instance.NCP+1]])
     for j in range(sum(HTR[0:1]),sum(HTR[0:2])):
-        instance.Ucon.add(instance.Usmall == instance.U[d,3*Zone+1,instance.t[1+j*instance.NCP+1]])
-    
+        for i in range(0*Zone+1,3*Zone+1):
+            instance.Ucon.add(instance.UofRaff[d] == instance.U[d,i,instance.t[1+j*instance.NCP+1]])
+        for i in range(3*Zone+1,4*Zone+1):
+            instance.Ucon.add(instance.Usmall == instance.U[d,i,instance.t[1+j*instance.NCP+1]])
 
 # FeedRaff
 # Feed is only supplied from inlet of first colmun in Zone 3
 # Raffinate is only collected from outlet of last colmun in Zone 3
 for d in instance.Data:
     for j in range(sum(HTR[0:2]),sum(HTR[0:3])):
-        instance.Ucon.add(instance.UofFeedRaff[d] == instance.U[d,2*Zone+1,instance.t[1+j*instance.NCP+1]])
-        instance.Ucon.add(instance.Usmall == instance.U[d,1,instance.t[1+j*instance.NCP+1]])
-        instance.Ucon.add(instance.Usmall == instance.U[d,Zone+1,instance.t[1+j*instance.NCP+1]])
-        instance.Ucon.add(instance.Usmall == instance.U[d,3*Zone+1,instance.t[1+j*instance.NCP+1]])
+        for i in range(0*Zone+1,2*Zone+1):
+            instance.Ucon.add(instance.Usmall == instance.U[d,i,instance.t[1+j*instance.NCP+1]])
+        for i in range(2*Zone+1,3*Zone+1):
+            instance.Ucon.add(instance.UofFeedRaff[d] == instance.U[d,i,instance.t[1+j*instance.NCP+1]])
+        for i in range(3*Zone+1,4*Zone+1):
+            instance.Ucon.add(instance.Usmall == instance.U[d,i,instance.t[1+j*instance.NCP+1]])
 
 # Ext
 # Desorbent is only supplied from inlet of first colmun in Zone 1
 # Extract is only collected from outlet of last colmun in Zone 1
 for d in instance.Data:
     for j in range(sum(HTR[0:4]),sum(HTR[0:5])):
-        instance.Ucon.add(instance.UofExt[d] == instance.U[d,1,instance.t[1+j*instance.NCP+1]])
+        for i in range(0*Zone+1,1*Zone+1):
+            instance.Ucon.add(instance.UofExt[d] == instance.U[d,1,instance.t[1+j*instance.NCP+1]])
         for i in range(1*Zone+1,4*Zone+1):
             instance.Ucon.add(instance.Usmall == instance.U[d,i,instance.t[1+j*instance.NCP+1]])
 
@@ -486,20 +492,17 @@ opt.options['ma57_pivtol'] = 1e-8
 
 opt.options['max_iter'] = 5000
 
-opt.options['linear_system_scaling'] = 'mc19'
-
 #opt.options['linear_solver'] = 'ma97'
 #opt.options['linear_solver'] = 'ma57'
 opt.options['linear_solver'] = 'ma27'
-
 
 instance.preprocess()
 results = opt.solve(instance, tee=True)
 instance.load(results)
 
-# =============================================================================
-# 
-# =============================================================================
+# -------------------------------------------------------------------
+# Display Results
+# -------------------------------------------------------------------
 
 print("\n-------------------Estimation Solution----------------------\n")
 
@@ -531,7 +534,7 @@ for d in instance.Data:
     print("Comp B conc in extract = %s" %(value((sum(instance.intCE[d,2,j] for j in instance.Col))/(sum(instance.UE[d,j,k]*instance.HT[d,k]/instance.NCP for j in instance.Col for k in instance.t if k != 0)))))
     print("Comp A conc in raffinate = %s" %(value((sum(instance.intCR[d,1,j] for j in instance.Col))/(sum(instance.UR[d,j,k]*instance.HT[d,k]/instance.NCP for j in instance.Col for k in instance.t if k != 0)))))
     print("Comp B conc in raffinate = %s" %(value((sum(instance.intCR[d,2,j] for j in instance.Col))/(sum(instance.UR[d,j,k]*instance.HT[d,k]/instance.NCP for j in instance.Col for k in instance.t if k != 0)))))
-    print("\nUofCI = %s " %(value(instance.UofCI[d])))
+    print("\nUofIC = %s " %(value(instance.UofIC[d])))
     print("UofRaff = %s " %(value(instance.UofRaff[d])))
     print("UofFeedRaff = %s " %(value(instance.UofFeedRaff[d])))
     print("UofExt = %s " %(value(instance.UofExt[d])))
@@ -539,7 +542,7 @@ for d in instance.Data:
 
 print("FlowRateError = (R,Raff,FeedRaff,Ext)")
 for d in instance.Data:
-    print("Day%s = (%s,%s,%s,%s)" %(d,value((instance.UofCI[d]-URexp[d-1])*100/URexp[d-1]),value((instance.UofRaff[d]-URaffexp[d-1])*100/URaffexp[d-1]),value((instance.UofFeedRaff[d]-UFeedRaffexp[d-1])*100/UFeedRaffexp[d-1]),value((instance.UofExt[d]-UExtexp[d-1])*100/UExtexp[d-1])))
+    print("Day%s = (%s,%s,%s,%s)" %(d,value((instance.UofIC[d]-UICexp[d-1])*100/UICexp[d-1]),value((instance.UofRaff[d]-URaffexp[d-1])*100/URaffexp[d-1]),value((instance.UofFeedRaff[d]-UFeedRaffexp[d-1])*100/UFeedRaffexp[d-1]),value((instance.UofExt[d]-UExtexp[d-1])*100/UExtexp[d-1])))
 
 print("\n")
 
@@ -567,8 +570,8 @@ Col = []
 t = []
 X = []
 Comp = []
-CFru = [[] for i in range(NData)]
-CGlu = [[] for i in range(NData)]
+CA = [[] for i in range(NData)]
+CB = [[] for i in range(NData)]
 S = np.zeros(NData)
 
 for i in sorted(instance.Col):
@@ -584,8 +587,8 @@ for i in sorted(instance.Comp):
 for k in range(NData):
     for i in sorted(instance.Col):
         for j in sorted(instance.x):
-            CFru[k].append(value(instance.C[k+1, 1, i, 1.0, j])/value(instance.CF[k+1,1]))
-            CGlu[k].append(value(instance.C[k+1, 2, i, 1.0, j])/value(instance.CF[k+1,2]))
+            CA[k].append(value(instance.C[k+1, 1, i, 1.0, j])/value(instance.CF[k+1,1]))
+            CB[k].append(value(instance.C[k+1, 2, i, 1.0, j])/value(instance.CF[k+1,2]))
 
 for i in sorted(instance.Col):
     for j in sorted(instance.x):
@@ -594,13 +597,71 @@ for i in sorted(instance.Col):
 filename = [[] for i in range(NData)]
 for i in range(NData):
     plt.figure(i+1)
-    line1, = plt.plot(X, CFru[i], 'bx-', label='Comp A')
-    line2, = plt.plot(X, CGlu[i], 'r+-', label='Comp B')
-    plt.legend(handles=[line1, line2])
+    plt.plot(X, CA[i], 'o-', label='Comp A')
+    plt.plot(X, CB[i], 'x-', label='Comp B')
+    plt.legend()
     plt.xlim(0, ColL*Colum)
     plt.ylim(0, 2)
-    plt.xlabel('x (m)')
-    plt.ylabel('C/C(feed)')
+    plt.xlabel('x [m]')
+    plt.ylabel('C/C(feed) [-]')
     plt.title(f"Data{i+1}_Concentration profile")
     filename[i] = dirname01 + f"Data{i+1}_concentration_profile"
-    plt.savefig(filename[i])
+    plt.savefig(filename[i], dpi=500)
+
+dirname02 = dirname00 + f"Animationfile_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}/"
+os.makedirs(dirname02, exist_ok=True)
+
+for l in range(NData):
+    C1all=[]
+    C2all=[]
+
+    for k in sorted(instance.t):
+        C1 = []
+        C2 = []
+        for i in sorted(instance.Col):
+            for j in sorted(instance.x):
+                C1.append((value(instance.C[l+1,1, i, k ,j]))/value(instance.CF[l+1,1]))
+                C2.append((value(instance.C[l+1,2, i, k ,j]))/value(instance.CF[l+1,2]))
+        C1all.append(C1)
+        C2all.append(C2)
+
+    C1all = np.array(C1all)
+    C2all = np.array(C2all)
+
+    C1_ani = C1all
+    C2_ani = C2all
+
+    C1all = np.hstack([C1all[:,3*Nfex:],C1all[:,:3*Nfex]])
+    C2all = np.hstack([C2all[:,3*Nfex:],C2all[:,:3*Nfex]])
+    C1_ani = np.vstack([C1_ani,C1all])
+    C2_ani = np.vstack([C2_ani,C2all])
+
+    C1all = np.hstack([C1all[:,3*Nfex:],C1all[:,:3*Nfex]])
+    C2all = np.hstack([C2all[:,3*Nfex:],C2all[:,:3*Nfex]])
+    C1_ani = np.vstack([C1_ani,C1all])
+    C2_ani = np.vstack([C2_ani,C2all])
+
+    C1all = np.hstack([C1all[:,3*Nfex:],C1all[:,:3*Nfex]])
+    C2all = np.hstack([C2all[:,3*Nfex:],C2all[:,:3*Nfex]])
+    C1_ani = np.vstack([C1_ani,C1all])
+    C2_ani = np.vstack([C2_ani,C2all])
+
+    fig = plt.figure(figsize = (8, 6))
+
+    def update(i,u1,u2,x,fig_title):
+        plt.cla()
+        plt.ylim(0, 2.0)
+        plt.xlim(0, ColL*Colum)
+        plt.plot(x,u1[i,:], 'o-', label='Comp A')
+        plt.plot(x,u2[i,:], 'x-', label='Comp B')
+        plt.xlabel('x [m]')
+        plt.ylabel('C/C(feed) [-]')
+        plt.title(f"Data{l+1} ASMB Concentration profile")
+        plt.legend()
+
+
+    nframe = Nfet*value(instance.NCP)+1
+    nframe = nframe*4
+    ani = animation.FuncAnimation(fig,update,fargs = (C1_ani,C2_ani,X,'Wave motion'),interval=100,frames=nframe)
+    filename = dirname02 + f"Data{l+1}_ASMB_Concentration_Animation.gif"
+    ani.save(filename, writer="pillow", dpi=500)

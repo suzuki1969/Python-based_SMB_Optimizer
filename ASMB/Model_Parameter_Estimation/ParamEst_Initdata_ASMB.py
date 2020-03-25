@@ -11,7 +11,7 @@ import numpy as np
 
 Nfet = 12  # Number of Finite Elements in Time 
 Nfex = 30  # Number of Finite Elements in Space
-NCP = 3  # Number of Collocation Points (This program works only 3)
+NCP = 3  # Number of Collocation Points
 DScheme = 'CENTRAL' # 'BACKWARD' or 'CENTRAL'; Discretize scheme of space
 
 # -------------------------------------------------------------------
@@ -21,9 +21,9 @@ DScheme = 'CENTRAL' # 'BACKWARD' or 'CENTRAL'; Discretize scheme of space
 NComp = 2  # Number of components
 NZone = 4 # This program only works only Four-Zone
 Colum = 4  # Number of columns
-ColL = 0.75  # Column length
+ColL = 1.5  # Column length
 eb = 0.4  # Void fraction
-Isotype = "Henry" # "Henry", "Langmuir" or "anti-Langmuir"
+Isotype = "anti-Langmuir" # "Henry", "Langmuir" or "anti-Langmuir"
 
 # -------------------------------------------------------------------
 # Dead volume
@@ -44,12 +44,12 @@ bInit = [1.0, 1.0]
 # Tikhonov Regularization
 # -------------------------------------------------------------------
 
-Rho0 = [1.0, 3.0]
+Rho0 = [3.0, 8.0]
 Rho = {}
 for i in range(2):
     Rho[i+1] = Rho0[i]
 
-# fill the reliable parameter value
+# fill a reliable parameter value
 L2Kap = [1.0, 1.0]
 L2K = [1.0, 1.0]
 L2b = [1.0, 1.0]
@@ -87,12 +87,12 @@ filename = "SubStepVelocity.csv"
 ALLU = np.loadtxt(filename, delimiter=",", skiprows=1, usecols=tuple(np.arange(1, NData+1)))
 
 if NData == 1:
-    URexp  = ALLU[0]
+    UICexp  = ALLU[0]
     URaffexp = ALLU[1]
     UFeedRaffexp = ALLU[2]
     UExtexp = ALLU[3]
 else:
-    URexp  = ALLU[0,0:NData]
+    UICexp  = ALLU[0,0:NData]
     URaffexp = ALLU[1,0:NData]
     UFeedRaffexp = ALLU[2,0:NData]
     UExtexp = ALLU[3,0:NData]
@@ -133,26 +133,47 @@ if NData == 1:
 else:
     HTRatio = Nfet*np.mean(ALLHT, axis=1)/np.mean(StepTimeInit)
 HTR_Int = [round(HTRatio[i]) for i in range(len(HTRatio))]
-while sum(HTR_Int) != Nfet:
-    Val = [abs(HTRatio[i] - HTR_Int[i]) for i in range(len(HTRatio))]
-    if sum(HTR_Int) < Nfet:
-        HTR_Int[np.argmax(Val)] = HTR_Int[np.argmax(Val)] + 1
+
+index = []
+for i in range(len(HTRatio)):
+    if HTR_Int[i] == 0:
+        index.append(i)
+        HTR_Int[i] = HTR_Int[i]+1
+    elif  HTR_Int[i] == 1:
+        index.append(i)
     else:
-        HTR_Int[np.argmax(Val)] = HTR_Int[np.argmax(Val)] - 1
+        pass
+
+Val = sorted(enumerate([abs(HTRatio[i] - HTR_Int[i]) for i in range(len(HTRatio))]), reverse=True, key=lambda x:x[1])
+for i in range(len(HTRatio)):
+    if sum(HTR_Int) != Nfet:
+        if sum(HTR_Int) < Nfet:
+            HTR_Int[Val[i][0]] = HTR_Int[Val[i][0]] + 1
+        else:
+            if i in index:
+                pass
+            else:
+                HTR_Int[Val[i][0]] = HTR_Int[Val[i][0]] - 1
+    else:
+        break
 HTR = np.array(HTR_Int, dtype='int64')
+
+# Time descritization of Feed-Raffinate sub-step should be finer
+HTR[np.argmax(HTR)] = HTR[np.argmax(HTR)]-1
+HTR[2] += 1
 
 UInit = [[],[],[],[]]
 for i in range(NData):
     if NData == 1:
-         U = [[URexp,URaffexp,Umin,URexp,UExtexp,URexp],
-              [URexp,URaffexp,Umin,URexp,UExtexp,URexp],
-              [URexp,URaffexp,UFeedRaffexp,URexp,UExtexp,URexp],
-              [URexp,Umin,Umin,URexp,UExtexp,URexp],]
+         U = [[UICexp,URaffexp,Umin,UICexp,UExtexp,UICexp],
+              [UICexp,URaffexp,Umin,UICexp,Umin,UICexp],
+              [UICexp,URaffexp,UFeedRaffexp,UICexp,Umin,UICexp],
+              [UICexp,Umin,Umin,UICexp,Umin,UICexp],]
     else:
-        U = [[URexp[i],URaffexp[i],Umin,URexp[i],UExtexp[i],URexp[i]],
-             [URexp[i],URaffexp[i],Umin,URexp[i],UExtexp[i],URexp[i]],
-             [URexp[i],URaffexp[i],UFeedRaffexp[i],URexp[i],UExtexp[i],URexp[i]],
-             [URexp[i],Umin,Umin,URexp[i],UExtexp[i],URexp[i]],]
+        U = [[UICexp[i],URaffexp[i],Umin,UICexp[i],UExtexp[i],UICexp[i]],
+             [UICexp[i],URaffexp[i],Umin,UICexp[i],Umin,UICexp[i]],
+             [UICexp[i],URaffexp[i],UFeedRaffexp[i],UICexp[i],Umin,UICexp[i]],
+             [UICexp[i],Umin,Umin,UICexp[i],Umin,UICexp[i]],]
     for j in range(Colum):
         UIte = []
         for k in range(len(HTRatio)):
@@ -160,24 +181,15 @@ for i in range(NData):
                 UIte.append(U[j][k])
         UInit[j].append(UIte)
 
-U1Init = np.array(UInit[0]) # Initial values of fluid velocity in column 1
-U2Init = np.array(UInit[1]) # Initial values of fluid velocity in column 2
-U3Init = np.array(UInit[2]) # Initial values of fluid velocity in column 3
-U4Init = np.array(UInit[3]) # Initial values of fluid velocity in column 4 
+U1Init = np.array(UInit[0][0]) # Initial values of fluid velocity in Zone 1
+U2Init = np.array(UInit[1][0]) # Initial values of fluid velocity in Zone 2
+U3Init = np.array(UInit[2][0]) # Initial values of fluid velocity in Zone 3
+U4Init = np.array(UInit[3][0]) # Initial values of fluid velocity in Zone 4 
+
+for i in range(1,NData):
+    U1Init = np.vstack((U1Init, np.array(UInit[0][i])))
+    U2Init = np.vstack((U2Init, np.array(UInit[1][i]))) 
+    U3Init = np.vstack((U3Init, np.array(UInit[2][i])))
+    U4Init = np.vstack((U4Init, np.array(UInit[3][i])))
 
 HTI = NCP*HTR # Using for "HT_Fix_rule" and "Ucon"
-
-# -------------------------------------------------------------------
-# For Collacation Method 
-# -------------------------------------------------------------------
-
-A = {}
-A[1,1] = 0.19681547722366
-A[1,2] = 0.3944243147909
-A[1,3] = 0.37640306270047
-A[2,1] = -0.06553542585020
-A[2,2] = 0.29207341166523
-A[2,3] = 0.5124858618842
-A[3,1] = 0.02377097434822
-A[3,2] = -0.041548752126
-A[3,3] = 0.1111111111111

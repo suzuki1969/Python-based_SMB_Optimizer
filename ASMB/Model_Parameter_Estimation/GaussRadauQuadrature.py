@@ -1,4 +1,5 @@
-# Created by Kensuke Suzuki in Mar 2020
+# Source cord: https://jp.mathworks.com/matlabcentral/fileexchange/4850-legende-gauss-radau-nodes-and-weights
+# Rvised by Kensuke Suzuki in Mar 2020
 
 from math import *
 import sys
@@ -13,14 +14,6 @@ def lglnodes(N1):
         x[i]=-cos(2*pi*i/(2*N+1))
         xold[i] = 2
     
-    #% The Legendre Vandermonde Matrix
-    #P=np.ones((N1,N1+1);
-    
-    # Compute P_(N) using the recursion relation
-    # Compute its first and second derivatives and 
-    # update x using the Newton-Raphson method.
-       
-    # Free abscissae
     free=[i for i in range(1,N1)]
     
     n=[i for i in range(0,N1+1)]

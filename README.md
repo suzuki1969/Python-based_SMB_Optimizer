@@ -1,2 +1,3 @@
 # Python-based_SMB_Optimizer
-Under Construction
+
+Before using the SMB Optimizer, install the software referring to "Software_Installation_Manual"

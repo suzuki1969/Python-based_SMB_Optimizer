@@ -8,10 +8,10 @@
 # Initial Values for Optimized Variables
 # -------------------------------------------------------------------
 
-U1Init = 0.002222222 # Superfacial Velocity [m/hr] in Colmun 1
-U2Init = 0.001388889 # Superfacial Velocity [m/hr] in Colmun 2
-U3Init = 0.001391667 # Superfacial Velocity [m/hr] in Colmun 3
-U4Init = 0.000972222 # Superfacial Velocity [m/hr] in Colmun 4
+U1Init = 0.002222222 # Superfacial Velocity [m/s] in Colmun 1
+U2Init = 0.001388889 # Superfacial Velocity [m/s] in Colmun 2
+U3Init = 0.001391667 # Superfacial Velocity [m/s] in Colmun 3
+U4Init = 0.000972222 # Superfacial Velocity [m/s] in Colmun 4
 StepTimeInit = 1140.0 # Step Time
 
 # -------------------------------------------------------------------

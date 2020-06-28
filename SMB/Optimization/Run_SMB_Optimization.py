@@ -668,7 +668,6 @@ def update(i,u1,u2,x,fig_title):
     plt.ylabel('C/C(feed) [-]')
     plt.title(f"SMB Concentration profile")
     plt.legend()
-    plt.close()
 
 nframe = Nfet*value(instance.NCP)+1
 nframe = nframe*4

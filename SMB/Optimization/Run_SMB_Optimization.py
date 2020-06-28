@@ -207,8 +207,8 @@ instance.HTSum = Constraint(rule = HTsum_rule)
 
 for i in range(0,Nfet):
     for j in range(2,value(instance.NCP)+1):
-        instance.HT_constraint.add(instance.HT[instance.t[i*instance.NCP+j]] == instance.HT[instance.t[i*instance.NCP+j+1]])
-instance.HT_constraint.add(instance.HT[instance.t[1]] == instance.HT[instance.t[2]])
+        instance.HT_constraints.add(instance.HT[instance.t[i*instance.NCP+j]] == instance.HT[instance.t[i*instance.NCP+j+1]])
+instance.HT_constraints.add(instance.HT[instance.t[1]] == instance.HT[instance.t[2]])
 
 # -------------------------------------------------------------------
 # Calculating weights of Gauss-Radau quadrature
@@ -278,7 +278,8 @@ instance.UMaxBound.deactivate()
 instance.MinThroughput.deactivate()
 instance.UDMaxBound.deactivate()
 instance.HTSum.deactivate()
-instance.HT_constraint.deactivate()
+instance.U_constraints.deactivate()
+instance.HT_constraints.deactivate()
 
 # -------------------------------------------------------------------
 # Solver options

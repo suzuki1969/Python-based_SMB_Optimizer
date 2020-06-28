@@ -54,11 +54,8 @@ m.UMaxBound = Constraint(m.Col, m.t, rule = UMaxBound_rule)
 # Set Constraint List
 # -------------------------------------------------------------------
 
-m.UF_constraint=ConstraintList()
-m.UD_constraint=ConstraintList()
-m.UE_constraint=ConstraintList()
-m.UR_constraint=ConstraintList()
-m.HT_constraint=ConstraintList()
+m.U_constraints=ConstraintList()
+m.HT_constraints=ConstraintList()
 
 # -------------------------------------------------------------------
 # Create Instance
@@ -413,25 +410,25 @@ if PowerFeed == 'yes':
     pass
 elif PowerFeed == 'no':
     for i in range(1,Nfet):
-        instance.HT_constraint.add(instance.HT[instance.t[2]] == instance.HT[instance.t[i*instance.NCP+2]])
+        instance.HT_constraints.add(instance.HT[instance.t[2]] == instance.HT[instance.t[i*instance.NCP+2]])
     
     for i in range(1,Nfet):
-        instance.UE_constraint.add(instance.U[Zone+1,instance.t[2]] == instance.U[Zone+1,instance.t[i*instance.NCP+2]])
+        instance.U_constraints.add(instance.U[Zone+1,instance.t[2]] == instance.U[Zone+1,instance.t[i*instance.NCP+2]])
 
     for i in range(1,Nfet):
-        instance.UD_constraint.add(instance.U[1,instance.t[2]] == instance.U[1,instance.t[i*instance.NCP+2]])
+        instance.U_constraints.add(instance.U[1,instance.t[2]] == instance.U[1,instance.t[i*instance.NCP+2]])
 
     for i in range(1,Nfet):
-        instance.UF_constraint.add(instance.U[2*Zone+1,instance.t[2]] == instance.U[2*Zone+1,instance.t[i*instance.NCP+2]])
+        instance.U_constraints.add(instance.U[2*Zone+1,instance.t[2]] == instance.U[2*Zone+1,instance.t[i*instance.NCP+2]])
 
     for i in range(1,Nfet):
-        instance.UR_constraint.add(instance.U[3*Zone+1,instance.t[2]] == instance.U[3*Zone+1,instance.t[i*instance.NCP+2]])
+        instance.U_constraints.add(instance.U[3*Zone+1,instance.t[2]] == instance.U[3*Zone+1,instance.t[i*instance.NCP+2]])
 else:
     print("ERROR: Confirm PowerFeed definition")
 
 if HT_Const == 'yes':
     for i in range(1,Nfet):
-        instance.HT_constraint.add(instance.HT[instance.t[2]] == instance.HT[instance.t[i*instance.NCP+2]])
+        instance.HT_constraints.add(instance.HT[instance.t[2]] == instance.HT[instance.t[i*instance.NCP+2]])
 elif HT_Const == 'no':
     pass
 else:
@@ -439,23 +436,23 @@ else:
 
 for i in range(0,Nfet):
     for j in range(2,value(instance.NCP)+1):
-        instance.UE_constraint.add(instance.U[Zone+1,instance.t[i*instance.NCP+j]] == instance.U[Zone+1,instance.t[i*instance.NCP+j+1]])
-instance.UE_constraint.add(instance.U[Zone+1,instance.t[1]] == instance.U[Zone+1,instance.t[2]])
+        instance.U_constraints.add(instance.U[Zone+1,instance.t[i*instance.NCP+j]] == instance.U[Zone+1,instance.t[i*instance.NCP+j+1]])
+instance.U_constraints.add(instance.U[Zone+1,instance.t[1]] == instance.U[Zone+1,instance.t[2]])
 
 for i in range(0,Nfet):
     for j in range(2,value(instance.NCP)+1):
-        instance.UD_constraint.add(instance.U[1,instance.t[i*instance.NCP+j]] == instance.U[1,instance.t[i*instance.NCP+j+1]])
-instance.UD_constraint.add(instance.U[1,instance.t[1]] == instance.U[1,instance.t[2]])
+        instance.U_constraints.add(instance.U[1,instance.t[i*instance.NCP+j]] == instance.U[1,instance.t[i*instance.NCP+j+1]])
+instance.U_constraints.add(instance.U[1,instance.t[1]] == instance.U[1,instance.t[2]])
 
 for i in range(0,Nfet):
     for j in range(2,value(instance.NCP)+1):
-        instance.UF_constraint.add(instance.U[2*Zone+1,instance.t[i*instance.NCP+j]] == instance.U[2*Zone+1,instance.t[i*instance.NCP+j+1]])
-instance.UF_constraint.add(instance.U[2*Zone+1,instance.t[1]] == instance.U[2*Zone+1,instance.t[2]])
+        instance.U_constraints.add(instance.U[2*Zone+1,instance.t[i*instance.NCP+j]] == instance.U[2*Zone+1,instance.t[i*instance.NCP+j+1]])
+instance.U_constraints.add(instance.U[2*Zone+1,instance.t[1]] == instance.U[2*Zone+1,instance.t[2]])
 
 for i in range(0,Nfet):
     for j in range(2,value(instance.NCP)+1):
-        instance.UR_constraint.add(instance.U[3*Zone+1,instance.t[i*instance.NCP+j]] == instance.U[3*Zone+1,instance.t[i*instance.NCP+j+1]])
-instance.UR_constraint.add(instance.U[3*Zone+1,instance.t[1]] == instance.U[3*Zone+1,instance.t[2]])
+        instance.U_constraints.add(instance.U[3*Zone+1,instance.t[i*instance.NCP+j]] == instance.U[3*Zone+1,instance.t[i*instance.NCP+j+1]])
+instance.U_constraints.add(instance.U[3*Zone+1,instance.t[1]] == instance.U[3*Zone+1,instance.t[2]])
 
 # -------------------------------------------------------------------
 # Activating constraints
@@ -470,7 +467,8 @@ instance.MinThroughput.activate()
 instance.UDMaxBound.activate()
 
 instance.HTSum.activate()
-instance.HT_constraint.activate()
+instance.U_constraints.activate()
+instance.HT_constraints.activate()
 
 # -------------------------------------------------------------------
 # Solver options

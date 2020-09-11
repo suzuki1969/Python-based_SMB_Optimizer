@@ -37,8 +37,8 @@ DScheme = 'CENTRAL' # 'BACKWARD' or 'CENTRAL'; Discretize scheme of space
 NComp = 2  # Number of components
 NZone = 4 # This program only works only Four-Zone
 Colum = 4  # Number of columns
-ColL = 0.25  # Column length
-eb = 0.408 # 0.378(1 column), 0.381(2 column), or 0.408  # Void fraction
+ColL = 0.452  # Column length
+eb = 0.375 # Void fraction
 
 # -------------------------------------------------------------------
 # LDF Model difinition 

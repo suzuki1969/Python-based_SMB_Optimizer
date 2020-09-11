@@ -711,7 +711,10 @@ for i in sorted(instance.Comp):
 print("--------------------------------------------------")
 if Tikhonov == True:
     print("--------------------------------------------------")
-    print(f"regularization parameters = {instance.rho[1],instance.rho[2]}")
+    if EVM == True:
+        print(f"regularization parameters = {instance.rho[1],instance.rho[2]}")
+    elif EVM == False:
+        print(f"regularization parameters = {instance.rho[1]}")
     print("--------------------------------------------------")
     if DV == True:
         print(f"Recycle Length Error = {value(instance.LRe)-L2LRe}")

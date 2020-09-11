@@ -9,8 +9,6 @@
 
 ----- Power Feed is implemented -----
 
------ HT treated as variable -----
-
 ----- Dead Volume is implemented -----
 Ipopt 3.12.13: mu_init=0.001
 max_iter=5000

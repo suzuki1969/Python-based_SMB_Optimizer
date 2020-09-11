@@ -61,9 +61,9 @@ else:
     sys.exit("ERROR: Confirm PowerFeed definition")
 
 if HT_Const == True:
-    print("\n----- HT treated as variable -----")
-elif HT_Const == False:
     pass
+elif HT_Const == False:
+    print("\n----- HT treated as variable -----")
 else:
     sys.exit("ERROR: Confirm HT_Const definition")
 

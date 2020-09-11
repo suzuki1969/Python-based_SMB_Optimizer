@@ -13,8 +13,8 @@
 from pyomo.environ import *
 from pyomo.dae import *
 from pyomo.opt import SolverFactory
-from SMB_Model import m
-from Initdata_SMB import *
+from SMB_Model_ParamEst import m
+from Initdata_SMB_ParamEst import *
 from GaussRadauQuadrature import lglnodes
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
@@ -54,13 +54,6 @@ elif Axial_D == False:
 	pass
 else:
     sys.exit("ERROR: Confirm Axial_D definition")
-
-if PowerFeed == True:
-    print("\n----- Power Feed is implemented -----")
-elif PowerFeed == False:
-    HT_Const = False
-else:
-    sys.exit("ERROR: Confirm PowerFeed definition")
 
 if DV == True:
     print("\n----- Dead Volume is implemented -----")

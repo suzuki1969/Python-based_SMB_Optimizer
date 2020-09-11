@@ -19,9 +19,6 @@ import matplotlib.animation as animation
 import sys
 import os
 import numpy as np
-import time
-
-t1 = time.time()
 
 dirname00 = f"Result_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}/"
 os.makedirs(dirname00, exist_ok=True)

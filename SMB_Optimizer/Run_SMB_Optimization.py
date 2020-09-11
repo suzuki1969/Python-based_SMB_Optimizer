@@ -11,8 +11,8 @@
 from pyomo.environ import *
 from pyomo.dae import *
 from pyomo.opt import SolverFactory
-from SMB_Model import m
-from Initdata_SMB import *
+from SMB_Model_Optimization import m
+from Initdata_SMB_Optimization import *
 from GaussRadauQuadrature import lglnodes
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
@@ -56,7 +56,7 @@ else:
 if PowerFeed == True:
     print("\n----- Power Feed is implemented -----")
 elif PowerFeed == False:
-    HT_Const = False
+    HT_Const = True
 else:
     sys.exit("ERROR: Confirm PowerFeed definition")
 

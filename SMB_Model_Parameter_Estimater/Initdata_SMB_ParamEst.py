@@ -54,13 +54,6 @@ DV = False # Boolean : If True, Dead Volume is taken into account
 Ncstr = 4  # Number of CSTRs
 
 # -------------------------------------------------------------------
-# Power Feed
-# -------------------------------------------------------------------
-
-PowerFeed = False # boolean : Power Feed
-HT_Const = True # boolean :If yes, PowerFeed works in the same time intervals 
-
-# -------------------------------------------------------------------
 # Model Parameter Values
 # -------------------------------------------------------------------
 
@@ -76,8 +69,8 @@ LReinit = 0.05*ColL # Dead Volume Length
 # -------------------------------------------------------------------
 
 Tikhonov = True # boolean : Tikhonov Regularization
-EVM = False # boolean : EVM Estimation Formulation
-Regularization_Parameter = [1.0e1, 1.0e1] # [Tikhonov regularization parameter, EVM regularization parameter]
+EVM = True # boolean : EVM Estimation Formulation
+Regularization_Parameter = [1.0e3, 1.0e8] # [Tikhonov regularization parameter, EVM regularization parameter]
 Nreg = [1,2]
 
 # fill a reliable parameter value for Tikhonov Regularization

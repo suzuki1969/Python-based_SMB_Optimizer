@@ -12,7 +12,7 @@
 
 from pyomo.environ import *
 from pyomo.dae import *
-from Initdata_SMB import *
+from Initdata_SMB_ParamEst import *
 import numpy as np
 import sys
 

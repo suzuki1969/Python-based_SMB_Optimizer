@@ -43,3 +43,6 @@ def lglnodes(N1):
     w[free]=(1-x[free])/(N1*P[free,N1-1])**2
     
     return w[::-1]
+
+if __name__ ==  "__main__":
+    pass

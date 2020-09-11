@@ -27,7 +27,7 @@ os.makedirs(dirname00, exist_ok=True)
 class Logger(object):
     def __init__(self):
         self.terminal = sys.stdout
-        self.log = open(f"{dirname00}Output_ParamEst_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt", "a")
+        self.log = open(f"{dirname00}Output_Optimization_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt", "a")
     def write(self, message):
         self.terminal.write(message)
         self.log.write(message)

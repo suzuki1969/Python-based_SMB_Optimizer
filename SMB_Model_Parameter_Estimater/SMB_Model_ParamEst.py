@@ -89,11 +89,11 @@ def Data_init(m):
 # -------------------------------------------------------------------
 
 m.FET = Set(initialize = FET_init, ordered = True)
-m.Col = Set(initialize = Col_init, ordered = True)
+m.Col = Set(initialize = Col_init, ordered = True, dimen=1)
 m.FEX = Set(initialize = FEX_init, ordered = True)
 m.CP = Set(initialize = CP_init, ordered = True)
-m.Comp = Set(initialize = Comp_init, ordered = True)
-m.Data = Set(initialize = Data_init, ordered = True)
+m.Comp = Set(initialize = Comp_init, ordered = True, dimen=1)
+m.Data = Set(initialize = Data_init, ordered = True, dimen=1)
 m.Regularization = Set(initialize = [1,2])  
 
 # -------------------------------------------------------------------

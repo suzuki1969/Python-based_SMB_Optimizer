@@ -36,7 +36,7 @@ NCP = 3  # Number of Collocation Points
 DScheme = 'CENTRAL' # 'BACKWARD' or 'CENTRAL'; Discretize scheme of space
 
 # -------------------------------------------------------------------
-# Details of subjected ASMB
+# Details of subjected SMB
 # -------------------------------------------------------------------
 
 NComp = 2  # Number of components

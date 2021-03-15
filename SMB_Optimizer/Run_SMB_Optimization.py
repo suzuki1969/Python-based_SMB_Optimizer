@@ -478,7 +478,7 @@ for k in instance.t:
 instance.StepTime.free()
 
 # -------------------------------------------------------------------
-# Setting flow rate of ASMB
+# Setting flow rate of SMB
 # -------------------------------------------------------------------
 
 if PowerFeed == True:

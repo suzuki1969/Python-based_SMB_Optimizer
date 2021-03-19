@@ -500,8 +500,11 @@ elif PowerFeed == False:
         instance.U_constraints.add(instance.U[3*Zone+1,instance.t[2]] == instance.U[3*Zone+1,instance.t[i*instance.NCP+2]])
 
 if HT_Const == True:
-    for i in range(1,Nfet):
-        instance.HT_constraints.add(instance.HT[instance.t[2]] == instance.HT[instance.t[i*instance.NCP+2]])
+    if PowerFeed == True:
+        for i in range(1,Nfet):
+            instance.HT_constraints.add(instance.HT[instance.t[2]] == instance.HT[instance.t[i*instance.NCP+2]])
+    elif PowerFeed == False:
+        pass
 
 for i in range(0,Nfet):
     for j in range(2,value(instance.NCP)+1):

@@ -489,14 +489,13 @@ instance.obj2.activate()
 # Setting flow rate
 # -------------------------------------------------------------------
 
-if PowerFeed == False:
-    for d in instance.Data:
-        for i in range(1,Nfet):
-            instance.U_constraints.add(instance.UF[d,2*Zone+1,instance.t[2]] == instance.UF[d,2*Zone+1,instance.t[i*instance.NCP+2]])
-            instance.U_constraints.add(instance.UE[d,1*Zone,instance.t[2]] == instance.UE[d,1*Zone,instance.t[i*instance.NCP+2]])
-            instance.U_constraints.add(instance.UD[d,0*Zone+1,instance.t[2]] == instance.UD[d,0*Zone+1,instance.t[i*instance.NCP+2]])
-            for x in range(3*Zone+1, 4*Zone+1):
-                instance.U_constraints.add(instance.U[d,x,instance.t[2]] == instance.U[d,x,instance.t[i*instance.NCP+2]])
+for d in instance.Data:
+    for i in range(1,Nfet):
+        instance.U_constraints.add(instance.UF[d,2*Zone+1,instance.t[2]] == instance.UF[d,2*Zone+1,instance.t[i*instance.NCP+2]])
+        instance.U_constraints.add(instance.UE[d,1*Zone,instance.t[2]] == instance.UE[d,1*Zone,instance.t[i*instance.NCP+2]])
+        instance.U_constraints.add(instance.UD[d,0*Zone+1,instance.t[2]] == instance.UD[d,0*Zone+1,instance.t[i*instance.NCP+2]])
+        for x in range(3*Zone+1, 4*Zone+1):
+            instance.U_constraints.add(instance.U[d,x,instance.t[2]] == instance.U[d,x,instance.t[i*instance.NCP+2]])
 
 # if HT_Const == True:
 #     for d in instance.Data:

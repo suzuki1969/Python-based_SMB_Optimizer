@@ -107,7 +107,7 @@ discretizer2 = TransformationFactory('dae.finite_difference')
 #ncp=number of collocation points within each finite element, (scheme=OO, default is ‘LAGRANGE-RADAU’)
 discretizer.apply_to(instance,nfe=Nfet, ncp=value(instance.NCP) , wrt=instance.t, scheme='LAGRANGE-RADAU')
 
-discretizer2.apply_to(instance,nfe=Nfex-1, wrt=instance.x, scheme='CENTRAL')
+discretizer2.apply_to(instance,nfe=Nfex-1, wrt=instance.x, scheme=DScheme)
 
 if DV == True:
     discretizer2.apply_to(instance,nfe=Ncstr, wrt=instance.xRe, scheme='BACKWARD')
